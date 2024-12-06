@@ -45,7 +45,7 @@ if average_data==1:
     # Need a recent xarray version
 
 # Calculate the difference between the frequencies 38 and 200
-# dB_diff = 10*np.log10(dataSel.sel(frequency=freqs[1])) - 10*np.log10(dataSel.sel(frequency=freqs[0]))
+dB_diff = 10*np.log10(dataSel.sel(frequency=freqs[1])) - 10*np.log10(dataSel.sel(frequency=freqs[0]))
 
 # Select 38 kHz data and plot
 dB_38000=10*np.log10(dataSel.sel(frequency=38000))
@@ -78,7 +78,7 @@ plt.show()
 # Plot dB diff
 fig, ax = plt.subplots(figsize=(10, 6))
 dB_diff.plot.pcolormesh(x='ping_time', y='range', ax=ax, cmap='seismic')
-ax.set_title('dB difference / 38-200 / red: 38>200 (fish w/sb), blue: 38<200')
+ax.set_title('dB difference 38-200 / red: 38>200 (fish w/sb), blue: 38<200')
 ax.set_xlabel('Time')
 ax.set_ylabel('Range (m)')
 ax.set_ylim(0,250)
