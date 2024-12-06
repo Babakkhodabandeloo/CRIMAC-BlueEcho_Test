@@ -31,12 +31,12 @@ freqs=[38000, 200000]
 print(f)
 data=xr.open_dataset(f,engine="zarr")
 
+
 # Select a subset for testing
 dataSel=data.sv.sel(frequency=freqs,ping_time=slice("2024-02-21 05:00:00","2024-02-21 05:30:00"))
 
 # What's the best way to resample / coarsen prior to dB differencing and other operations in xarray????
 #dataSelResamp=dataSel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=1, boundary="trim").mean()
-
 # That didn't work...
 
 # Calculate the difference between the frequencies 38 and 200
