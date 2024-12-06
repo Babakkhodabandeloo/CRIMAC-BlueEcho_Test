@@ -67,7 +67,7 @@ ax.invert_yaxis()
 plt.show()
 
 fig, ax = plt.subplots(figsize=(10, 6))
-dB_38000.plot.pcolormesh(x='ping_time', y='range', ax=ax, cmap='viridis', vmin=vmin, vmax=vmax)
+dB_200000.plot.pcolormesh(x='ping_time', y='range', ax=ax, cmap='viridis', vmin=vmin, vmax=vmax)
 ax.set_title('Sv at 200000 Hz')
 ax.set_xlabel('Time')
 ax.set_ylabel('Range (m)')
