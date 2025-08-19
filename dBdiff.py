@@ -35,7 +35,7 @@ freq = 70000.
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 03:01:30" # Select subset of data
+end_time   = "2018-03-04 02:01:30" # Select subset of data
 
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
