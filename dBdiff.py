@@ -67,6 +67,8 @@ sv_sel = data['sv'].sel(
 )
 sv_sel_db = 10 * np.log10(sv_sel)
 
+dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+
 # Set min/max for visualization
 vmin = -82
 vmax = -50
