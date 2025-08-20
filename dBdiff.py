@@ -39,7 +39,7 @@ end_time   = "2018-03-04 02:01:25" # Select subset of data
 
 # Range selection
 start_range = 200 # m
-end_range   = 215 # m
+end_range   = 245 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
@@ -106,7 +106,7 @@ ax.invert_yaxis()         # optional: depth increasing downwards
 fig.savefig('sv_70kHz.png', dpi=150)
 plt.close(fig)
 
-# Urmy parameters:
+# Urmy parameters: =============================================
 sv_values = sv_sel.values
 print(sv_values.shape)  # (40, 76)
 print(len(sv_values[0]))
@@ -115,13 +115,52 @@ print(len(sv_values[0]))
 sv_sum_range = sv_sel.sum(dim="range")
 
 # From Urmy parameters Urmy et al 2012 - ICES J Marine Science
-Abundance = Delta_R * sv_sum_range # as a function of ping time
+Integrate_sv_dz = ( Delta_R * sv_sum_range ) # as a function of ping time
+Abundance = 10*np.log10( Integrate_sv_dz ) # as a function of ping time
 
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(Abundance)
 ax.set_title('Abundance')
 ax.set_xlabel('Ping number')
-fig.savefig('sAbundance.png', dpi=150)
+fig.savefig('Abundance.png', dpi=150)
+plt.close(fig)
+
+Density = 10*np.log10( Integrate_sv_dz/(end_range - start_range) )
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(Density)
+ax.set_title('Density')
+ax.set_xlabel('Ping number')
+fig.savefig('Density.png', dpi=150)
+plt.close(fig)
+
+# Range_val = sv_sel.coords['range'].values
+print(sv_sel["range"].shape)
+print(sv_sel.values.shape)
+
+z_product_svz = sv_sel * sv_sel["range"]
+z_product_svz_dz = z_product_svz * Delta_R
+
+# print(z_product_svz)
+
+CenterofMass = (z_product_svz_dz.sum(dim="range") ) / Integrate_sv_dz
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(CenterofMass)
+ax.set_title('CenterofMass')
+ax.set_xlabel('Ping number')
+fig.savefig('CenterofMass.png', dpi=150)
+plt.close(fig)
+
+
+Z_minus_CM_mult_svzdz = ( sv_sel * ((sv_sel["range"] - CenterofMass )**2) ) * Delta_R
+Inertia = (Z_minus_CM_mult_svzdz.sum(dim="range") ) / Integrate_sv_dz
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(Inertia)
+ax.set_title('Inertia')
+ax.set_xlabel('Ping number')
+fig.savefig('Inertia.png', dpi=150)
 plt.close(fig)
 
 # # Subset for ping_time
