@@ -35,8 +35,11 @@ freq = 70000.
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 02:01:30" # Select subset of data
+end_time   = "2018-03-04 02:01:25" # Select subset of data
 
+# Range selection
+start_range = 200 # m
+end_range   = 215 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
@@ -59,19 +62,26 @@ ping_times = data['ping_time']
 print(ping_times)
 print(data['frequency'])
 
+Delta_R = data['range'].values[1] - data['range'].values[0]
+print('DeltaR = ', Delta_R)
 
 # Select sv between times at 70 kHz
 sv_sel = data['sv'].sel(
     ping_time=slice(start_time, end_time),
+    range=slice(start_range,end_range),
     frequency=freq
 )
 sv_sel_db = 10 * np.log10(sv_sel)
 
+print('type(sv_sel)', type(sv_sel))
+print(sv_sel)
+
 dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+
 
 # Set min/max for visualization
 vmin = -82
-vmax = -50
+vmax = -60
 
 fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -96,8 +106,23 @@ ax.invert_yaxis()         # optional: depth increasing downwards
 fig.savefig('sv_70kHz.png', dpi=150)
 plt.close(fig)
 
+# Urmy parameters:
+sv_values = sv_sel.values
+print(sv_values.shape)  # (40, 76)
+print(len(sv_values[0]))
 
+# sum across the range dimension (i.e. collapse depth bins into one value per ping)
+sv_sum_range = sv_sel.sum(dim="range")
 
+# From Urmy parameters Urmy et al 2012 - ICES J Marine Science
+Abundance = Delta_R * sv_sum_range # as a function of ping time
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(Abundance)
+ax.set_title('Abundance')
+ax.set_xlabel('Ping number')
+fig.savefig('sAbundance.png', dpi=150)
+plt.close(fig)
 
 # # Subset for ping_time
 # data_time = data.sv.sel(ping_time=slice(start_time, end_time))
