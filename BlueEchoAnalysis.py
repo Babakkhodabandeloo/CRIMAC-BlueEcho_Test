@@ -38,6 +38,7 @@ freq2 = 70000.  # Frequency 2 to substract from frequency 1
 
 # Frequency selection (70 kHz)
 freq = 70000.
+Threshold = -66 # (dB) Filter the data and ignore data below Threshold (dB)
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
@@ -101,13 +102,22 @@ sv_sel_db = 10 * xr.apply_ufunc(
     dask='allowed'  # <-- this enables lazy computation with dask
 )
 
+# create mask from sv_sel_db
+Mask = sv_sel_db > Threshold
+
+# apply mask to original sv_sel, force zeros where mask is False
+sv_sel_threhholds = sv_sel.where(Mask, 1E-30)
+
+sv_sel_db = sv_sel_db.where(Mask, -300)
+sv_sel = sv_sel_threhholds
+
+
 # sv_sel_loaded = sv_sel.load()  # converts to in-memory numpy array
 # sv_sel_db = 10 * np.log10(sv_sel_loaded)
+# print('type(sv_sel),  type(sv_sel_threhholds)', type(sv_sel), type(sv_sel_threhholds))
+# print(sv_sel)
 
-print('type(sv_sel)', type(sv_sel))
-print(sv_sel)
-
-dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+# dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
 
 
 # Set min/max for visualization
