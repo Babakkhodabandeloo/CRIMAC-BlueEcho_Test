@@ -38,8 +38,8 @@ start_time = "2018-03-04 00:01:25" # Select subset of data
 end_time   = "2018-03-04 02:01:25" # Select subset of data
 
 # Range selection
-start_range = 200 # m
-end_range   = 245 # m
+start_range = 150 # m
+end_range   = 170 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
@@ -119,18 +119,18 @@ Integrate_sv_dz = ( Delta_R * sv_sum_range ) # as a function of ping time
 Abundance = 10*np.log10( Integrate_sv_dz ) # as a function of ping time
 
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(Abundance)
+ax.plot(sv_sel.ping_time, Abundance)
 ax.set_title('Abundance')
-ax.set_xlabel('Ping number')
+ax.set_xlabel('Ping Time (d HH:MM)')
 fig.savefig('Abundance.png', dpi=150)
 plt.close(fig)
 
 Density = 10*np.log10( Integrate_sv_dz/(end_range - start_range) )
 
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(Density)
+ax.plot(sv_sel.ping_time, Density)
 ax.set_title('Density')
-ax.set_xlabel('Ping number')
+ax.set_xlabel('Ping Time (d HH:MM)')
 fig.savefig('Density.png', dpi=150)
 plt.close(fig)
 
@@ -146,9 +146,9 @@ z_product_svz_dz = z_product_svz * Delta_R
 CenterofMass = (z_product_svz_dz.sum(dim="range") ) / Integrate_sv_dz
 
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(CenterofMass)
+ax.plot(sv_sel.ping_time, CenterofMass)
 ax.set_title('CenterofMass')
-ax.set_xlabel('Ping number')
+ax.set_xlabel('Ping Time (d HH:MM)')
 fig.savefig('CenterofMass.png', dpi=150)
 plt.close(fig)
 
@@ -157,9 +157,9 @@ Z_minus_CM_mult_svzdz = ( sv_sel * ((sv_sel["range"] - CenterofMass )**2) ) * De
 Inertia = (Z_minus_CM_mult_svzdz.sum(dim="range") ) / Integrate_sv_dz
 
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(Inertia)
+ax.plot(sv_sel.ping_time,Inertia)
 ax.set_title('Inertia')
-ax.set_xlabel('Ping number')
+ax.set_xlabel('Ping Time (d HH:MM)')
 fig.savefig('Inertia.png', dpi=150)
 plt.close(fig)
 
