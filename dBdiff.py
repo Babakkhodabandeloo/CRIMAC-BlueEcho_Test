@@ -24,6 +24,9 @@ import sys
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+
+start = time.time()
 
 local = 0 # Running tests on local machine, 0->on IMR server
 average_data = 1 # 1->Average data, 0->No averaging
@@ -35,11 +38,11 @@ freq = 70000.
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 02:01:25" # Select subset of data
+end_time   = "2018-03-05 00:00:25" # Select subset of data
 
 # Range selection
-start_range = 150 # m
-end_range   = 170 # m
+start_range = 50 # m
+end_range   = 220 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
@@ -76,35 +79,38 @@ sv_sel_db = 10 * np.log10(sv_sel)
 print('type(sv_sel)', type(sv_sel))
 print(sv_sel)
 
-dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+# dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
 
 
 # Set min/max for visualization
 vmin = -82
 vmax = -60
 
-fig, ax = plt.subplots(figsize=(12, 6))
+# fig, ax = plt.subplots(figsize=(12, 6))
 
-# xarray plotting
-sv_sel_db.plot.pcolormesh(
-    x='ping_time', 
-    y='range', 
-    ax=ax, 
-    cmap='viridis', 
-    vmin = vmin,
-    vmax = vmax
+# # xarray plotting
+# sv_sel_db.plot.pcolormesh(
+#     x='ping_time', 
+#     y='range', 
+#     ax=ax, 
+#     cmap='viridis', 
+#     vmin = vmin,
+#     vmax = vmax
 
-)
+# )
 
-ax.set_title('Sv at 70 kHz (dB)')
-ax.set_xlabel('Time')
-ax.set_ylabel('Range (m)')
-# ax.set_ylim(0, 250)       # optional: limit range
-ax.invert_yaxis()         # optional: depth increasing downwards
+# ax.set_title('Sv at 70 kHz (dB)')
+# ax.set_xlabel('Time')
+# ax.set_ylabel('Range (m)')
+# # ax.set_ylim(0, 250)       # optional: limit range
+# ax.invert_yaxis()         # optional: depth increasing downwards
 
-# plt.show()
-fig.savefig('sv_70kHz.png', dpi=150)
-plt.close(fig)
+# # plt.show()
+# fig.savefig('sv_70kHz.png', dpi=150)
+# plt.close(fig)
+
+end = time.time()
+print(f"Runtime before Urmy parameter Calcs: {end - start:.2f} seconds")
 
 # Urmy parameters: =============================================
 sv_values = sv_sel.values
@@ -162,6 +168,9 @@ ax.set_title('Inertia')
 ax.set_xlabel('Ping Time (d HH:MM)')
 fig.savefig('Inertia.png', dpi=150)
 plt.close(fig)
+
+end = time.time()
+print(f"Runtime: {end - start:.2f} seconds")
 
 # # Subset for ping_time
 # data_time = data.sv.sel(ping_time=slice(start_time, end_time))
