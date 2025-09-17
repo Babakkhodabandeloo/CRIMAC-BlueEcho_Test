@@ -31,22 +31,22 @@ hv.extension('matplotlib')  # use Matplotlib backend
 
 start = time.time()
 
-local = 0 # Running tests on local machine, 0->on IMR server
+local = 0 # 1: Running tests on local machine, 0-> on IMR server
 average_data = 1 # 1->Average data, 0->No averaging
 freq1 = 70000.   # Frequency 1
 freq2 = 70000.  # Frequency 2 to substract from frequency 1
 
 # Frequency selection (70 kHz)
 freq = 70000.
-Threshold = -66 # (dB) Filter the data and ignore data below Threshold (dB)
+Threshold = -90 # (dB) Filter the data and ignore data below Threshold (dB)
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 05:01:20" # Select subset of data
+end_time   = "2018-03-04 04:01:25" # Select subset of data
 
 # Range selection
-start_range = 50 # m
-end_range   = 230 # m
+start_range = 30 # m
+end_range   = 220 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
@@ -122,7 +122,7 @@ sv_sel = sv_sel_threhholds
 
 # Set min/max for visualization
 vmin = -82
-vmax = -60
+vmax = -40
 
 # fig, ax = plt.subplots(figsize=(12, 6))
 
