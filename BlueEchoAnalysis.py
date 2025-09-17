@@ -42,17 +42,17 @@ Threshold = -66 # (dB) Filter the data and ignore data below Threshold (dB)
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-05 00:00:25" # Select subset of data
+end_time   = "2018-03-04 05:01:20" # Select subset of data
 
 # Range selection
 start_range = 50 # m
-end_range   = 220 # m
+end_range   = 230 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
 # No preprocessing in Korona (ie averaging)
 # Assumes regular grid across frequencies
 if local==1:
-    f = '/mnt/z/test_data/dBDiff/ACOUSTIC/GRIDDED/out/S2024204001_sv.zarr'
+    f = '/mnt/z/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
 elif local==0:
     # f = '/data/crimac-scratch/test_data/dBDiff/ACOUSTIC/GRIDDED/out/S2024204001_sv.zarr'
     f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
@@ -155,7 +155,8 @@ plot = sv_sel_db.hvplot(
     invert_yaxis=True,
     width=2000,
     height=800,
-    xlabel='Time',
+    # xlabel='Ping Time (d HH:MM)',
+    xlabel='Ping Time (mm-dd HH)',
     ylabel='Range (m)',
     title='Sv at 70 kHz (dB)',
     clabel='Sv (dB)',
@@ -195,7 +196,8 @@ Abundance = xr.apply_ufunc(
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(sv_sel.ping_time, Abundance)
 ax.set_title('Abundance')
-ax.set_xlabel('Ping Time (d HH:MM)')
+# ax.set_xlabel('Ping Time (d HH:MM)')
+ax.set_xlabel=('Ping Time (mm-dd HH)')
 fig.savefig('Abundance.png', dpi=150)
 plt.close(fig)
 
@@ -212,7 +214,8 @@ Density = xr.apply_ufunc(
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(sv_sel.ping_time, Density)
 ax.set_title('Density')
-ax.set_xlabel('Ping Time (d HH:MM)')
+# ax.set_xlabel('Ping Time (d HH:MM)')
+ax.set_xlabel=('Ping Time (mm-dd HH)')
 fig.savefig('Density.png', dpi=150)
 plt.close(fig)
 
@@ -230,7 +233,8 @@ CenterofMass = (z_product_svz_dz.sum(dim="range") ) / Integrate_sv_dz
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(sv_sel.ping_time, CenterofMass)
 ax.set_title('CenterofMass')
-ax.set_xlabel('Ping Time (d HH:MM)')
+# ax.set_xlabel('Ping Time (d HH:MM)')
+ax.set_xlabel=('Ping Time (mm-dd HH)')
 fig.savefig('CenterofMass.png', dpi=150)
 plt.close(fig)
 
@@ -252,7 +256,8 @@ Inertia = sv_times_squared_dev_dz.sum(dim="range") / Integrate_sv_dz
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(sv_sel.ping_time,Inertia)
 ax.set_title('Inertia')
-ax.set_xlabel('Ping Time (d HH:MM)')
+# ax.set_xlabel('Ping Time (d HH:MM)')
+ax.set_xlabel=('Ping Time (mm-dd HH)')
 fig.savefig('Inertia.png', dpi=150)
 plt.close(fig)
 
