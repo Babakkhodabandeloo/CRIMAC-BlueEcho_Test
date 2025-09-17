@@ -42,7 +42,7 @@ Threshold = -90 # (dB) Filter the data and ignore data below Threshold (dB)
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 04:01:25" # Select subset of data
+end_time   = "2018-03-04 08:01:25" # Select subset of data
 
 # Range selection
 start_range = 30 # m
@@ -263,3 +263,31 @@ plt.close(fig)
 
 end = time.time()
 print(f"Runtime: {end - start:.2f} seconds")
+
+
+#%% Plot all on top of Echogram
+
+# Create echogram
+echogram = sv_sel_db.hvplot(
+    x='ping_time',
+    y='range',
+    cmap='viridis',
+    clim=(vmin, vmax),
+    invert_yaxis=True,
+    width=2000,
+    height=800,
+    # xlabel='Ping Time (d HH:MM)',
+    xlabel='Ping Time (mm-dd HH)',
+    ylabel='Range (m)',
+    title='Sv at 70 kHz (dB)',
+    clabel='Sv (dB)',
+    fontsize={'title': 24, 'labels': 18, 'xticks': 16, 'yticks': 16,'cticks':14, 'clabel':14}  # increase font sizes
+)
+
+com_line = hv.Curve((sv_sel.ping_time, CenterofMass), 'ping_time', 'range').opts( color='red', linewidth=2 )
+
+# Overlay
+final_plot = echogram * com_line
+
+final_plot.opts(title="Sv with Center of Mass")
+hv.save(final_plot, 'All_in_One.png') 
