@@ -28,6 +28,7 @@ import time
 import holoviews as hv
 import hvplot.xarray  # enables hvplot on xarray
 hv.extension('matplotlib')  # use Matplotlib backend
+import pandas as pd
 
 start = time.time()
 
@@ -42,7 +43,7 @@ Threshold = -90 # (dB) Filter the data and ignore data below Threshold (dB)
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
-end_time   = "2018-03-04 08:01:25" # Select subset of data
+end_time   = "2018-03-05 00:01:20" # Select subset of data
 
 # Range selection
 start_range = 30 # m
@@ -284,7 +285,29 @@ echogram = sv_sel_db.hvplot(
     fontsize={'title': 24, 'labels': 18, 'xticks': 16, 'yticks': 16,'cticks':14, 'clabel':14}  # increase font sizes
 )
 
-com_line = hv.Curve((sv_sel.ping_time, CenterofMass), 'ping_time', 'range').opts( color='red', linewidth=2 )
+# plot Center of Mass without averaging in time:
+# com_line = hv.Curve((sv_sel.ping_time, CenterofMass), 'ping_time', 'range').opts( color='red', linewidth=2 )
+
+# Plot Center of Mass averaged every 1 hour:
+# Assuming sv_sel.ping_time is a datetime64 column
+com_df = pd.DataFrame({
+    "ping_time": sv_sel.ping_time,
+    "CenterOfMass": CenterofMass
+})
+
+# Resample to 1-hour bins, averaging the CoM
+com_hourly = (
+    com_df.set_index("ping_time")
+    .resample("1H")["CenterOfMass"]
+    .mean()
+    .reset_index()
+)
+
+# Create curve from hourly-averaged values
+com_line = hv.Curve(
+    (com_hourly["ping_time"], com_hourly["CenterOfMass"]),
+    'ping_time', 'range'
+).opts(color='red', linewidth=2)
 
 # Overlay
 final_plot = echogram * com_line
