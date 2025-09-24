@@ -24,6 +24,7 @@ import sys
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import time
 import holoviews as hv
 import hvplot.xarray  # enables hvplot on xarray
@@ -40,14 +41,16 @@ freq2 = 70000.  # Frequency 2 to substract from frequency 1
 
 # Frequency selection (70 kHz)
 freq = 70000.
-Threshold = -90 # (dB) Filter the data and ignore data below Threshold (dB)
+Threshold = -80 # (dB) Filter the data and ignore data below Threshold (dB)
+
+Transducer_Depth = 254 #m
 
 # Time selection
 start_time = "2018-03-04 00:01:25" # Select subset of data
 end_time   = "2018-03-05 00:01:20" # Select subset of data
 
 # Range selection
-start_range = 30 # m
+start_range = 20 # m
 end_range   = 220 # m
 
 # Example dataset with herring schools, two (crimac-scratch/test_data/dBDiff)
@@ -58,6 +61,7 @@ if local==1:
 elif local==0:
     # f = '/data/crimac-scratch/test_data/dBDiff/ACOUSTIC/GRIDDED/out/S2024204001_sv.zarr'
     f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
+    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/test/out/LoVe_2018_test.month.zarr'
 
 freqs=[freq1, freq2]
 print(f)
@@ -104,6 +108,12 @@ sv_sel_db = 10 * xr.apply_ufunc(
     dask='allowed'  # <-- this enables lazy computation with dask
 )
 
+# Remove NaNs in coordinates to avoid hvplot errors
+sv_sel_db = sv_sel_db.sel(
+    ping_time=sv_sel_db['ping_time'].notnull(),
+    range=sv_sel_db['range'].notnull()
+)
+
 # create mask from sv_sel_db
 Mask = sv_sel_db > Threshold
 
@@ -111,8 +121,14 @@ Mask = sv_sel_db > Threshold
 sv_sel_threhholds = sv_sel.where(Mask, 1E-30)
 
 sv_sel_db = sv_sel_db.where(Mask, -300)
+
 sv_sel = sv_sel_threhholds
 
+sv_sel_db = 10 * xr.apply_ufunc(
+    np.log10,
+    sv_sel,
+    dask='allowed'  # <-- this enables lazy computation with dask
+)
 
 # sv_sel_loaded = sv_sel.load()  # converts to in-memory numpy array
 # sv_sel_db = 10 * np.log10(sv_sel_loaded)
@@ -124,7 +140,7 @@ sv_sel = sv_sel_threhholds
 
 # Set min/max for visualization
 vmin = -82
-vmax = -50
+vmax = -66
 
 # fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -147,6 +163,12 @@ vmax = -50
 # # plt.show()
 # fig.savefig('sv_70kHz.png', dpi=150)
 # plt.close(fig)
+
+# # Remove NaNs in coordinates to avoid hvplot errors
+# sv_sel_db = sv_sel_db.dropna(dim='ping_time', how='any')
+# sv_sel_db = sv_sel_db.dropna(dim='range', how='any')
+
+
 
 # Create plot
 plot = sv_sel_db.hvplot(
@@ -266,55 +288,86 @@ plt.close(fig)
 end = time.time()
 print(f"Runtime: {end - start:.2f} seconds")
 
+
 # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-#%% Plot all on top of Echogram |||||||||||||||||||||||||||||||||||||||
-# hv.extension('bokeh')
+# |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+# Plot as "N x 1" sub-plots: >>>>>>>>>>>>>>
 
 # --------------------------
-# Create Echogram
-# --------------------------
-# --------------------------
-# 1. Downsample data
+# Downsample data
 # --------------------------
 sv_downsampled = sv_sel_db.isel(
-    range=slice(None, None, 2),  # keep range within min/max
-    ping_time=slice(None, None, 5)
+    range=slice(None, None, 2),   # keep every 2nd range bin
+    ping_time=slice(None, None, 5)  # keep every 5th ping
 )
-# sv_flipped = sv_downsampled.rename({'range': 'depth'})
-# sv_flipped = sv_flipped.assign_coords(depth=sv_flipped.depth[::-1])  # flip depth
 
+x = sv_downsampled.ping_time.values
+y = Transducer_Depth - sv_downsampled.range.values
 
 # --------------------------
-# 2. Echogram
+# Create figure with 2 subplots (N x 1)
 # --------------------------
-echogram = sv_downsampled.hvplot.quadmesh(
-    x='ping_time',
-    y='range',
-    cmap='viridis',
-    clim=(vmin, vmax),
-    xlabel='Ping Time (mm-dd HH)',
-    ylabel='Range (m)',
-    title='Sv at 70 kHz (dB)',
-    width=2000,
-    height=800
-).opts(
-    colorbar=False  # <- disable Holoviews colorbar
+fig, axs = plt.subplots(
+    5, 1,
+    figsize=(16, 12),
+    gridspec_kw={'height_ratios': [3, 1, 1, 1, 1]},
+    constrained_layout=True
 )
 
 # --------------------------
-# 3. Center of Mass (hourly average)
+# Top subplot: Echogram
+# --------------------------
+im = axs[0].imshow(
+    sv_downsampled.values.T,
+    origin='upper',
+    aspect='auto',
+    cmap='viridis', #'viridis', #'gist_ncar_r', 
+    vmin=vmin,
+    vmax=vmax,
+    extent=[mdates.date2num(x[0]), mdates.date2num(x[-1]), y[-1], y[0]]
+)
+
+axs[0].set_ylabel("Depth (m)", fontsize=20)
+axs[0].invert_yaxis()
+cbar = fig.colorbar(
+    im, 
+    ax=axs[0], 
+    label="Sv (dB)", 
+    fraction=0.04,  # thinner bar
+    pad=0.01        # less spacing
+)
+# Set label size
+cbar.ax.yaxis.label.set_size(16)
+
+axs[0].xaxis_date()
+axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[0].tick_params(axis='x', labelsize=20)  # x-axis ticks
+axs[0].tick_params(axis='y', labelsize=20)  # y-axis ticks
+
+# --------------------------
+# Bottom subplot: Center of Mass
 # --------------------------
 com_df = pd.DataFrame({
-    "ping_time": sv_sel.ping_time,
+    "ping_time": pd.to_datetime(sv_sel.ping_time),
     "CenterOfMass": CenterofMass
 })
-com_hourly = com_df.set_index("ping_time").resample("1h")["CenterOfMass"].mean().reset_index()
-# max_depth = sv_flipped.depth.max().item()
 
-com_line = hv.Curve(
-    (com_hourly["ping_time"], com_hourly["CenterOfMass"]),
-    'ping_time', 'range'
-).opts(color='red', linewidth=2)
+com_hourly = (
+    com_df.set_index("ping_time")
+    .resample("1h")["CenterOfMass"]
+    .mean()
+    .reset_index()
+)
+
+axs[1].plot(com_hourly["ping_time"], Transducer_Depth - com_hourly["CenterOfMass"], color="k")
+# axs[1].set_xlabel("Ping Time")
+axs[1].set_ylabel("Center of Mass", fontsize=18)
+axs[1].set_xlim(x[0], x[-1])
+axs[1].invert_yaxis()  # keep aligned with echogram
+
+axs[1].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[1].tick_params(axis='x', labelsize=20)  # x-axis ticks
+axs[1].tick_params(axis='y', labelsize=20)  # y-axis ticks
 
 # --------------------------
 # Abundance (1-hour bins, dB)
@@ -327,97 +380,222 @@ Abundance_hourly = xr.apply_ufunc(
     dask='allowed'
 ) * 10
 
-# final_plot = echogram * com_line 
-# hv.save(final_plot, "All_in_One_without_abundance.png", fmt='png')
+axs[2].plot(Abundance_hourly["ping_time"], Abundance_hourly, color="k")
+# axs[2].set_xlabel("Ping Time", fontsize=18)
+axs[2].set_ylabel("Abundance", fontsize=20)
+axs[2].set_xlim(x[0], x[-1])
+axs[2].tick_params(axis='x', labelsize=20)  # x-axis ticks
+axs[2].tick_params(axis='y', labelsize=20)  # y-axis ticks
+
+# --------------------------
+# Inertia (1-hour mean, dB)
+# --------------------------
+Inertia_hourly = Inertia.resample(ping_time="1h").mean()
+time_hourly = Abundance_hourly["ping_time"]
+axs[3].plot(time_hourly, Inertia_hourly, color="k")
+axs[3].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
+axs[3].set_ylabel("Inertia", fontsize=20)
+axs[3].set_xlim(x[0], x[-1])
+axs[3].tick_params(axis='x', labelsize=20)  # x-axis ticks
+axs[3].tick_params(axis='y', labelsize=20)  # y-axis ticks
+
+# --------------------------------
+#     Include Hydrophone Data
+# --------------------------------
+cwd = os.getcwd()
+# print("Current working directory:", cwd)
+Hyd_Dir = os.path.join(cwd, 'Hyd_data')
+
+csv_file = "March_4th_hourly.csv"
+csv_path = os.path.join(Hyd_Dir, csv_file)
+
+# Load CSV into a DataFrame
+df = pd.read_csv(csv_path)
+print(df.head())
+
+# Convert time to datetime and then to matplotlib date numbers
+df['time'] = pd.to_datetime(df['TIME'])
+df['time_num'] = mdates.date2num(df['time'])
+
+# Plot using matplotlib date numbers
+# axs[4].plot(df['time_num'], df['Arithmean_63_dB'], color='k')
+
+# Width of each bar
+width = 0.02
+# Plot as bars
+axs[4].bar(df['time_num'], df['Arithmean_63_dB'], width=0.02, color='k')  # width controls bar width
+
+# Shift positions for side-by-side bars
+# axs[4].bar(df['time_num'] - width/2, df['Arithmean_63_dB'], width=width, color='b', label='TOL_63')
+# axs[4].bar(df['time_num'] + width/2, df['Arithmean_125_dB'], width=width, color='r', label='TOL_125')
+
+axs[4].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
+axs[4].set_ylabel("SPL", fontsize=20)
+
+# Align x-axis with echogram
+axs[4].set_xlim(mdates.date2num(x[0]), mdates.date2num(x[-1]))
+axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+
+# --------------------------
+# Save
+# --------------------------
+plt.savefig("Nx1.png", dpi=300)
+plt.close(fig)
+
+
+
+# # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+# #%% Plot all on top of Echogram |||||||||||||||||||||||||||||||||||||||
+# # hv.extension('bokeh')
+
+# # --------------------------
+# # Create Echogram
+# # --------------------------
+# # --------------------------
+# # 1. Downsample data
+# # --------------------------
+# sv_downsampled = sv_sel_db.isel(
+#     range=slice(None, None, 2),  # keep range within min/max
+#     ping_time=slice(None, None, 5)
+# )
+# # sv_flipped = sv_downsampled.rename({'range': 'depth'})
+# # sv_flipped = sv_flipped.assign_coords(depth=sv_flipped.depth[::-1])  # flip depth
+
+
+# # --------------------------
+# # 2. Echogram
+# # --------------------------
+# echogram = sv_downsampled.hvplot.quadmesh(
+#     x='ping_time',
+#     y='range',
+#     cmap='viridis',
+#     clim=(vmin, vmax),
+#     xlabel='Ping Time (mm-dd HH)',
+#     ylabel='Range (m)',
+#     title='Sv at 70 kHz (dB)',
+#     width=2000,
+#     height=800
+# ).opts(
+#     colorbar=False  # <- disable Holoviews colorbar
+# )
+
+# # --------------------------
+# # 3. Center of Mass (hourly average)
+# # --------------------------
+# com_df = pd.DataFrame({
+#     "ping_time": sv_sel.ping_time,
+#     "CenterOfMass": CenterofMass
+# })
+# com_hourly = com_df.set_index("ping_time").resample("1h")["CenterOfMass"].mean().reset_index()
+# # max_depth = sv_flipped.depth.max().item()
+
+# com_line = hv.Curve(
+#     (com_hourly["ping_time"], com_hourly["CenterOfMass"]),
+#     'ping_time', 'range'
+# ).opts(color='red', linewidth=2)
+
+# # --------------------------
+# # Abundance (1-hour bins, dB)
+# # --------------------------
+# integrated_hourly = Integrate_sv_dz.resample(ping_time="1h").sum()
+
+# Abundance_hourly = xr.apply_ufunc(
+#     np.log10,
+#     integrated_hourly,
+#     dask='allowed'
+# ) * 10
+
+# # final_plot = echogram * com_line 
+# # hv.save(final_plot, "All_in_One_without_abundance.png", fmt='png')
 
 
 
 
-# final_plot = (echogram * com_line)
+# # final_plot = (echogram * com_line)
+# # # --------------------------
+# # # 5. Render with Matplotlib
+# # # --------------------------
+# # mpl_plot = hv.render(final_plot, backend='matplotlib')
+
+# # # Set figure size (width, height in inches)
+# # mpl_plot.figure.set_size_inches(15, 8)  # 20in wide, 10in tall
+# # ax = mpl_plot.axes[0]
+
+# # # Flip y-axis (depth increasing downward)
+# # ax.invert_yaxis()
+
+# # # Set yticks and labels
+# # ytick_positions = np.linspace(0, max_depth, 10)
+# # ax.set_yticks(ytick_positions)
+# # ax.set_yticklabels([f"{int(d)}" for d in ytick_positions])
+
+# # # Increase fonts
+# # ax.title.set_fontsize(16)
+# # ax.xaxis.label.set_fontsize(14)
+# # ax.yaxis.label.set_fontsize(14)
+# # ax.tick_params(axis='x', labelsize=12)
+# # ax.tick_params(axis='y', labelsize=12)
+
+# # # --------------------------
+# # # 6. Save figure
+# # # --------------------------
+# # mpl_plot.figure.savefig("All_in_One_without_abundance.png", dpi=200)
+
+
+
+# # final_plot = (echogram * com_line)
+# final_plot = echogram
 # # --------------------------
 # # 5. Render with Matplotlib
 # # --------------------------
 # mpl_plot = hv.render(final_plot, backend='matplotlib')
 
-# # Set figure size (width, height in inches)
-# mpl_plot.figure.set_size_inches(15, 8)  # 20in wide, 10in tall
-# ax = mpl_plot.axes[0]
+# # # Set figure size (width, height in inches)
+# mpl_plot.figure.set_size_inches(19, 8)  # 20in wide, 10in tall
+# # ax = mpl_plot.axes[0]
 
-# # Flip y-axis (depth increasing downward)
-# ax.invert_yaxis()
+# fig, ax1 = mpl_plot.figure, mpl_plot.axes[0]
 
-# # Set yticks and labels
-# ytick_positions = np.linspace(0, max_depth, 10)
-# ax.set_yticks(ytick_positions)
-# ax.set_yticklabels([f"{int(d)}" for d in ytick_positions])
 
-# # Increase fonts
-# ax.title.set_fontsize(16)
-# ax.xaxis.label.set_fontsize(14)
-# ax.yaxis.label.set_fontsize(14)
-# ax.tick_params(axis='x', labelsize=12)
-# ax.tick_params(axis='y', labelsize=12)
+# # Get the QuadMesh image object
+# im = ax1.collections[0]
+
+# # Add colorbar outside the plot
+# cbar = fig.colorbar(im, ax=ax1, pad=0.1)  # pad increases spacing
+# cbar.set_label("Sv (dB)", fontsize=22, color='black')
+
+# # Optional: set figure size
+# fig.set_size_inches(20, 10)
+
+
+# # Fonts
+# ax1.title.set_fontsize(20)
+# ax1.xaxis.label.set_fontsize(18)
+# ax1.yaxis.label.set_fontsize(18)
+# ax1.tick_params(axis='x', labelsize=18)
+# ax1.tick_params(axis='y', labelsize=18)
+
+# # Plot as red line on ax1
+# ax1.plot(
+#     com_hourly["ping_time"],
+#     com_hourly["CenterOfMass"],  # plot directly in range coordinates
+#     color='red',
+#     linewidth=2,
+#     label='Center of Mass'
+# )
+
+# # Show legend
+# ax1.legend(loc='upper right', fontsize=16, frameon=True)
+# # --------------------------
+# # 6. Add Abundance on secondary y-axis
+# # --------------------------
+# ax2 = ax1.twinx()
+# ax2.plot(Abundance_hourly["ping_time"], Abundance_hourly.values, color=[0,0.2,0.9], linewidth=2)
+# ax2.set_ylabel("Abundance (dB)", fontsize=24, color=[0,0.2,0.9])
+# ax2.tick_params(axis='y', labelsize=20, colors=[0,0.2,0.9])
 
 # # --------------------------
-# # 6. Save figure
+# # 7. Save figure
 # # --------------------------
-# mpl_plot.figure.savefig("All_in_One_without_abundance.png", dpi=200)
-
-
-
-# final_plot = (echogram * com_line)
-final_plot = echogram
-# --------------------------
-# 5. Render with Matplotlib
-# --------------------------
-mpl_plot = hv.render(final_plot, backend='matplotlib')
-
-# # Set figure size (width, height in inches)
-mpl_plot.figure.set_size_inches(19, 8)  # 20in wide, 10in tall
-# ax = mpl_plot.axes[0]
-
-fig, ax1 = mpl_plot.figure, mpl_plot.axes[0]
-
-
-# Get the QuadMesh image object
-im = ax1.collections[0]
-
-# Add colorbar outside the plot
-cbar = fig.colorbar(im, ax=ax1, pad=0.1)  # pad increases spacing
-cbar.set_label("Sv (dB)", fontsize=22, color='black')
-
-# Optional: set figure size
-fig.set_size_inches(20, 10)
-
-
-# Fonts
-ax1.title.set_fontsize(20)
-ax1.xaxis.label.set_fontsize(18)
-ax1.yaxis.label.set_fontsize(18)
-ax1.tick_params(axis='x', labelsize=18)
-ax1.tick_params(axis='y', labelsize=18)
-
-# Plot as red line on ax1
-ax1.plot(
-    com_hourly["ping_time"],
-    com_hourly["CenterOfMass"],  # plot directly in range coordinates
-    color='red',
-    linewidth=2,
-    label='Center of Mass'
-)
-
-# Show legend
-ax1.legend(loc='upper right', fontsize=16, frameon=True)
-# --------------------------
-# 6. Add Abundance on secondary y-axis
-# --------------------------
-ax2 = ax1.twinx()
-ax2.plot(Abundance_hourly["ping_time"], Abundance_hourly.values, color=[0,0.2,0.9], linewidth=2)
-ax2.set_ylabel("Abundance (dB)", fontsize=24, color=[0,0.2,0.9])
-ax2.tick_params(axis='y', labelsize=20, colors=[0,0.2,0.9])
-
-# --------------------------
-# 7. Save figure
-# --------------------------
-# fig.tight_layout()
-fig.savefig("All_in_One_with_abundance_range.png", dpi=200)
+# # fig.tight_layout()
+# fig.savefig("All_in_One_with_abundance_range.png", dpi=200)
