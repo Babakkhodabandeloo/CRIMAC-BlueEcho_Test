@@ -41,7 +41,7 @@ freq2 = 70000.  # Frequency 2 to substract from frequency 1
 
 # Frequency selection (70 kHz)
 freq = 70000.
-Threshold = -80 # (dB) Filter the data and ignore data below Threshold (dB)
+Threshold = -66 # (dB) Filter the data and ignore data below Threshold (dB)
 
 Transducer_Depth = 254 #m
 
@@ -61,20 +61,22 @@ if local==1:
 elif local==0:
     # f = '/data/crimac-scratch/test_data/dBDiff/ACOUSTIC/GRIDDED/out/S2024204001_sv.zarr'
     f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
-    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/test/out/LoVe_2018_test.month.zarr'
+    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/test/out/LoVe_2018_test.month_sv.zarr'
+    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
+    
 
 freqs=[freq1, freq2]
 print(f)
-# data=xr.open_dataset(f,engine="zarr")
-# data = xr.open_dataset(f, engine="zarr", chunks={"ping_time": 100, "range": 500})
+data=xr.open_dataset(f,engine="zarr")
+data = xr.open_dataset(f, engine="zarr", chunks={"ping_time": 100, "range": 500})
 
-# print('type(data)    : ',type(data) )
-# print(data.coords)
-# print(data.data_vars)
+print('type(data)    : ',type(data) )
+print(data.coords)
+print(data.data_vars)
 
-# ping_times = data['ping_time']
-# print(ping_times)
-# print(data['frequency'])
+ping_times = data['ping_time']
+print(ping_times)
+print(data['frequency'])
 
 # 
 
@@ -92,7 +94,7 @@ sv_sel = (
         chunks={"ping_time": 1000, "range": 5000}
     )['sv']
     .sel(
-        ping_time=slice(start_time, end_time),
+        # ping_time=slice(start_time, end_time),
         range=slice(start_range, end_range),
         frequency=freq
     )
@@ -101,34 +103,29 @@ sv_sel = (
 Delta_R = float(sv_sel['range'].diff('range').isel(range=0))
 print('DeltaR = ', Delta_R)
 
-# sv_sel_db = 10 * np.log10(sv_sel)
+# Compute dB lazily
 sv_sel_db = 10 * xr.apply_ufunc(
     np.log10,
     sv_sel,
-    dask='allowed'  # <-- this enables lazy computation with dask
+    dask='allowed'
 )
 
-# Remove NaNs in coordinates to avoid hvplot errors
+# Ensure coordinates are not NaN
+ping_time_valid = sv_sel_db['ping_time'].dropna(dim='ping_time', how='any')
+range_valid = sv_sel_db['range'].dropna(dim='range', how='any')
+
 sv_sel_db = sv_sel_db.sel(
-    ping_time=sv_sel_db['ping_time'].notnull(),
-    range=sv_sel_db['range'].notnull()
+    ping_time=ping_time_valid,
+    range=range_valid
 )
 
-# create mask from sv_sel_db
+# Mask low values
 Mask = sv_sel_db > Threshold
-
-# apply mask to original sv_sel, force zeros where mask is False
-sv_sel_threhholds = sv_sel.where(Mask, 1E-30)
-
 sv_sel_db = sv_sel_db.where(Mask, -300)
+sv_sel = sv_sel.where(Mask, 1E-30)
 
-sv_sel = sv_sel_threhholds
-
-sv_sel_db = 10 * xr.apply_ufunc(
-    np.log10,
-    sv_sel,
-    dask='allowed'  # <-- this enables lazy computation with dask
-)
+# Optional: sort coordinates just in case
+sv_sel_db = sv_sel_db.sortby('ping_time').sortby('range')
 
 # sv_sel_loaded = sv_sel.load()  # converts to in-memory numpy array
 # sv_sel_db = 10 * np.log10(sv_sel_loaded)
@@ -167,7 +164,8 @@ vmax = -66
 # # Remove NaNs in coordinates to avoid hvplot errors
 # sv_sel_db = sv_sel_db.dropna(dim='ping_time', how='any')
 # sv_sel_db = sv_sel_db.dropna(dim='range', how='any')
-
+print('sv_sel_db.values.min(), sv_sel_db.values.max() >>', 
+      sv_sel_db.values.min(), sv_sel_db.values.max())
 
 
 # Create plot
@@ -300,6 +298,7 @@ sv_downsampled = sv_sel_db.isel(
     range=slice(None, None, 2),   # keep every 2nd range bin
     ping_time=slice(None, None, 5)  # keep every 5th ping
 )
+print(sv_downsampled.values.min(), sv_downsampled.values.max())
 
 x = sv_downsampled.ping_time.values
 y = Transducer_Depth - sv_downsampled.range.values
@@ -393,7 +392,7 @@ axs[2].tick_params(axis='y', labelsize=20)  # y-axis ticks
 Inertia_hourly = Inertia.resample(ping_time="1h").mean()
 time_hourly = Abundance_hourly["ping_time"]
 axs[3].plot(time_hourly, Inertia_hourly, color="k")
-axs[3].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
+# axs[3].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
 axs[3].set_ylabel("Inertia", fontsize=20)
 axs[3].set_xlim(x[0], x[-1])
 axs[3].tick_params(axis='x', labelsize=20)  # x-axis ticks
@@ -423,11 +422,11 @@ df['time_num'] = mdates.date2num(df['time'])
 # Width of each bar
 width = 0.02
 # Plot as bars
-axs[4].bar(df['time_num'], df['Arithmean_63_dB'], width=0.02, color='k')  # width controls bar width
+# axs[4].bar(df['time_num'], df['Arithmean_63_dB'], width=0.02, color='k')  # width controls bar width
 
 # Shift positions for side-by-side bars
-# axs[4].bar(df['time_num'] - width/2, df['Arithmean_63_dB'], width=width, color='b', label='TOL_63')
-# axs[4].bar(df['time_num'] + width/2, df['Arithmean_125_dB'], width=width, color='r', label='TOL_125')
+axs[4].bar(df['time_num'] - width/3, df['Arithmean_63_dB'], width=width, color='b', label='TOL_63')
+axs[4].bar(df['time_num'] + width/3, df['Arithmean_125_dB'], width=width, color='r', label='TOL_125')
 
 axs[4].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
 axs[4].set_ylabel("SPL", fontsize=20)
@@ -435,6 +434,9 @@ axs[4].set_ylabel("SPL", fontsize=20)
 # Align x-axis with echogram
 axs[4].set_xlim(mdates.date2num(x[0]), mdates.date2num(x[-1]))
 axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[4].set_xlim(x[0], x[-1])
+axs[4].tick_params(axis='x', labelsize=20)  # x-axis ticks
+axs[4].tick_params(axis='y', labelsize=20)  # y-axis ticks
 
 # --------------------------
 # Save
@@ -442,7 +444,34 @@ axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
 plt.savefig("Nx1.png", dpi=300)
 plt.close(fig)
 
+# Save values in a file
+# Convert Abundance and Inertia to pandas
+abundance_df = Abundance_hourly.to_dataframe(name="Abundance")
+inertia_df = Inertia_hourly.to_dataframe(name="Inertia")
 
+# Center of Mass (already DataFrame but align on time index)
+com_hourly_df = com_hourly.set_index("ping_time").rename(columns={"CenterOfMass": "CenterOfMass"})
+
+# Adjust depth for CoM
+com_hourly_df["CenterOfMass"] = Transducer_Depth - com_hourly_df["CenterOfMass"]
+
+# Merge all into one DataFrame on ping_time
+# Create a clean DataFrame
+merged = pd.DataFrame({
+    "ping_time": time_hourly.values,  # hourly ping times
+    "Abundance": Abundance_hourly.values,
+    "Inertia": Inertia_hourly.values,
+    "CenterOfMass": (Transducer_Depth - com_hourly["CenterOfMass"]).values
+})
+
+# Save to CSV
+outdir = "OutputData"
+os.makedirs(outdir, exist_ok=True)  # make sure folder exists
+
+outfile = os.path.join(outdir, "acoustic_summary.csv")
+merged.to_csv(outfile, index=False)
+
+print(f"Saved file to: {outfile}")
 
 # # |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 # #%% Plot all on top of Echogram |||||||||||||||||||||||||||||||||||||||
