@@ -60,14 +60,14 @@ if local==1:
     f = '/mnt/z/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
 elif local==0:
     # f = '/data/crimac-scratch/test_data/dBDiff/ACOUSTIC/GRIDDED/out/S2024204001_sv.zarr'
-    f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
+    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
     # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/test/out/LoVe_2018_test.month_sv.zarr'
-    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
+    f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
     
 
 freqs=[freq1, freq2]
 print(f)
-data=xr.open_dataset(f,engine="zarr")
+# data=xr.open_dataset(f,engine="zarr")
 data = xr.open_dataset(f, engine="zarr", chunks={"ping_time": 100, "range": 500})
 
 print('type(data)    : ',type(data) )
@@ -303,45 +303,45 @@ print(sv_downsampled.values.min(), sv_downsampled.values.max())
 x = sv_downsampled.ping_time.values
 y = Transducer_Depth - sv_downsampled.range.values
 
-# --------------------------
-# Create figure with 2 subplots (N x 1)
-# --------------------------
+# -------------------------- # 
+# Create figure with 2 subplots (N x 1) 
+# # -------------------------- 
+
 fig, axs = plt.subplots(
-    5, 1,
-    figsize=(16, 12),
-    gridspec_kw={'height_ratios': [3, 1, 1, 1, 1]},
+    5, 1, figsize=(16, 12), 
+    gridspec_kw={'height_ratios': [3, 1, 1, 1, 1]}, 
     constrained_layout=True
 )
 
 # --------------------------
 # Top subplot: Echogram
 # --------------------------
-im = axs[0].imshow(
-    sv_downsampled.values.T,
-    origin='upper',
-    aspect='auto',
-    cmap='viridis', #'viridis', #'gist_ncar_r', 
+X, Y = np.meshgrid(mdates.date2num(x), y)
+
+im = axs[0].pcolormesh(
+    X, Y, sv_downsampled.values.T,
+    cmap='viridis',
     vmin=vmin,
     vmax=vmax,
-    extent=[mdates.date2num(x[0]), mdates.date2num(x[-1]), y[-1], y[0]]
+    shading='auto'   # important: aligns with hvplot/QuadMesh
 )
 
 axs[0].set_ylabel("Depth (m)", fontsize=20)
 axs[0].invert_yaxis()
+
 cbar = fig.colorbar(
-    im, 
-    ax=axs[0], 
-    label="Sv (dB)", 
-    fraction=0.04,  # thinner bar
-    pad=0.01        # less spacing
+    im,
+    ax=axs[0],
+    label="Sv (dB)",
+    fraction=0.04,
+    pad=0.01
 )
-# Set label size
 cbar.ax.yaxis.label.set_size(16)
 
 axs[0].xaxis_date()
 axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-axs[0].tick_params(axis='x', labelsize=20)  # x-axis ticks
-axs[0].tick_params(axis='y', labelsize=20)  # y-axis ticks
+axs[0].tick_params(axis='x', labelsize=20)
+axs[0].tick_params(axis='y', labelsize=20)
 
 # --------------------------
 # Bottom subplot: Center of Mass
@@ -405,38 +405,35 @@ cwd = os.getcwd()
 # print("Current working directory:", cwd)
 Hyd_Dir = os.path.join(cwd, 'Hyd_data')
 
-csv_file = "March_4th_hourly.csv"
+csv_file = "LoVe_hourly.csv"
 csv_path = os.path.join(Hyd_Dir, csv_file)
 
 # Load CSV into a DataFrame
 df = pd.read_csv(csv_path)
-print(df.head())
-
-# Convert time to datetime and then to matplotlib date numbers
 df['time'] = pd.to_datetime(df['TIME'])
 df['time_num'] = mdates.date2num(df['time'])
 
-# Plot using matplotlib date numbers
-# axs[4].plot(df['time_num'], df['Arithmean_63_dB'], color='k')
+# 🔹 Filter to echogram time range
+tmin = pd.to_datetime(x[0])
+tmax = pd.to_datetime(x[-1])
+df = df[(df['time'] >= tmin) & (df['time'] <= tmax)]
 
-# Width of each bar
+# Bar width (≈ 1 hour in days → 1/24 ≈ 0.0417)
 width = 0.02
-# Plot as bars
-# axs[4].bar(df['time_num'], df['Arithmean_63_dB'], width=0.02, color='k')  # width controls bar width
 
-# Shift positions for side-by-side bars
+# Side-by-side bars
 axs[4].bar(df['time_num'] - width/3, df['Arithmean_63_dB'], width=width, color='b', label='TOL_63')
 axs[4].bar(df['time_num'] + width/3, df['Arithmean_125_dB'], width=width, color='r', label='TOL_125')
 
 axs[4].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
 axs[4].set_ylabel("SPL", fontsize=20)
 
-# Align x-axis with echogram
+# Keep same x-axis range as echogram
 axs[4].set_xlim(mdates.date2num(x[0]), mdates.date2num(x[-1]))
 axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-axs[4].set_xlim(x[0], x[-1])
-axs[4].tick_params(axis='x', labelsize=20)  # x-axis ticks
-axs[4].tick_params(axis='y', labelsize=20)  # y-axis ticks
+axs[4].tick_params(axis='x', labelsize=20)
+axs[4].tick_params(axis='y', labelsize=20)
+axs[4].legend()
 
 # --------------------------
 # Save
