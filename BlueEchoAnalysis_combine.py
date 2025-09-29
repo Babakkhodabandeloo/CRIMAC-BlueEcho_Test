@@ -61,15 +61,14 @@ if local==1:
     f = '/mnt/z/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
 elif local==0:
     # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
-    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
-    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample1/out/LoVe_2018_N1_1.month_sv.zarr'
-    f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample/out/LoVe_2018_N1.month_sv.zarr'
+    f1='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
+    f2='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample1/out/LoVe_2018_N1_1.month_sv.zarr'
      
 
 freqs=[freq1, freq2]
-print(f)
+print(f1)
 # data=xr.open_dataset(f,engine="zarr")
-data = xr.open_dataset(f, engine="zarr", chunks={"ping_time": 100, "range": 500})
+data = xr.open_dataset(f1, engine="zarr", chunks={"ping_time": 100, "range": 500})
 
 print('type(data)    : ',type(data) )
 print(data.coords)
@@ -88,9 +87,9 @@ print(data['frequency'])
 #     range=slice(start_range,end_range),
 #     frequency=freq
 # )
-sv_sel = (
+sv1 = (
     xr.open_dataset(
-        f,
+        f1,
         engine="zarr",
         chunks={"ping_time": 1000, "range": 5000}
     )['sv']
@@ -100,6 +99,29 @@ sv_sel = (
         frequency=freq
     )
 )
+
+sv2 = (
+    xr.open_dataset(
+        f2,
+        engine="zarr",
+        chunks={"ping_time": 1000, "range": 5000}
+    )['sv']
+    .sel(
+        # ping_time=slice(start_time, end_time),
+        range=slice(start_range, end_range),
+        frequency=freq
+    )
+)
+
+# Combine along time (ping_time)
+sv_sel = xr.concat([sv1, sv2], dim="ping_time")
+
+# Ensure sorted order
+sv_sel = sv_sel.sortby("ping_time")
+
+# Drop duplicate ping_time values
+_, index = np.unique(sv_sel["ping_time"], return_index=True)
+sv_sel = sv_sel.isel(ping_time=index)
 
 Delta_R = float(sv_sel['range'].diff('range').isel(range=0))
 print('DeltaR = ', Delta_R)
@@ -340,8 +362,8 @@ cbar = fig.colorbar(
 cbar.ax.yaxis.label.set_size(16)
 
 axs[0].xaxis_date()
-axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-# axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+# axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
 axs[0].tick_params(axis='x', labelsize=20)
 axs[0].tick_params(axis='y', labelsize=20)
 
@@ -366,8 +388,8 @@ axs[1].set_ylabel("CM", fontsize=18)
 axs[1].set_xlim(x[0], x[-1])
 axs[1].invert_yaxis()  # keep aligned with echogram
 
-axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-# axs[1].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+# axs[0].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[1].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
 axs[1].tick_params(axis='x', labelsize=20)  # x-axis ticks
 axs[1].tick_params(axis='y', labelsize=20)  # y-axis ticks
 
@@ -398,8 +420,8 @@ Inertia_hourly = Inertia.resample(ping_time="1h").mean()
 time_hourly = Abundance_hourly["ping_time"]
 axs[3].plot(time_hourly, Inertia_hourly, color="k")
 # axs[3].set_xlabel("Ping Time (mm-dd hh)", fontsize=20)
-axs[3].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-# axs[3].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+# axs[3].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[3].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
 axs[3].set_ylabel("Inertia", fontsize=20)
 axs[3].set_xlim(x[0], x[-1])
 axs[3].tick_params(axis='x', labelsize=20)  # x-axis ticks
@@ -444,8 +466,8 @@ axs[4].set_xticks(top_ticks)
 
 # Keep same x-axis range as echogram
 axs[4].set_xlim(mdates.date2num(x[0]), mdates.date2num(x[-1]))
-axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
-# axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+# axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H"))
+axs[4].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
 axs[4].tick_params(axis='x', labelsize=20)
 axs[4].tick_params(axis='y', labelsize=20)
 axs[4].legend()
@@ -453,8 +475,7 @@ axs[4].legend()
 # --------------------------
 # Save
 # --------------------------
-plt.savefig("Nx1_month.png", dpi=300)
-plt.savefig("Nx1_month.tif", dpi=300)
+plt.savefig("Nx1_1month.png", dpi=300)
 plt.close(fig)
 
 # Save values in a file
@@ -481,7 +502,7 @@ merged = pd.DataFrame({
 outdir = "OutputData"
 os.makedirs(outdir, exist_ok=True)  # make sure folder exists
 
-outfile = os.path.join(outdir, "acoustic_summary_month.csv")
+outfile = os.path.join(outdir, "acoustic_summary_1month.csv")
 merged.to_csv(outfile, index=False)
 
 print(f"Saved file to: {outfile}")
