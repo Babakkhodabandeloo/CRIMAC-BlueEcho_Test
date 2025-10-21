@@ -101,11 +101,26 @@ sv_sel = (
     )
 )
 
-# dataSel=sv_sel.resample(ping_time="10min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
-# sv_sel = dataSel
+Delta_R = float(sv_sel['range'].diff('range').isel(range=0))
+print('Full resolution DeltaR = ', Delta_R)
+
+# ===== Resampling for have coarser time and range resolution ==========
+Range_resolution = 1 # range resolution of 1 m
+range_bins = int(Range_resolution / Delta_R) #  
+
+dataSel=sv_sel.resample(ping_time="10min").mean(dim=["ping_time"]).coarsen(range=range_bins, boundary="trim").mean()
+
+# Compute new range coordinates as the mean of each coarsened bin
+new_range = sv_sel['range'].coarsen(range=range_bins, boundary="trim").mean().values
+
+# Assign the new range coordinate (length matches coarsened dimension)
+dataSel = dataSel.assign_coords(range=("range", new_range))
+sv_sel = dataSel
 
 Delta_R = float(sv_sel['range'].diff('range').isel(range=0))
-print('DeltaR = ', Delta_R)
+print('DeltaR for resamples = ', Delta_R)
+# =====================================================================
+
 
 # Compute dB lazily
 sv_sel_db = 10 * xr.apply_ufunc(
