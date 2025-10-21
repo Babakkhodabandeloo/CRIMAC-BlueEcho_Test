@@ -60,10 +60,10 @@ end_range   = 230 # m
 if local==1:
     f = '/mnt/z/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
 elif local==0:
-    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
+    f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/DayExample/out/netcdfLoVe_2018_N1.test.zarr'
     # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample2/out/LoVe_2018_N1_2.month_sv.zarr'
     # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample1/out/LoVe_2018_N1_1.month_sv.zarr'
-    f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample/out/LoVe_2018_N1.month_sv.zarr'
+    # f='/data/crimac-scratch/tmp/test_BlueEco/LoVe/2018/MonthExample/out/LoVe_2018_N1.month_sv.zarr'
      
 
 freqs=[freq1, freq2]
@@ -101,6 +101,9 @@ sv_sel = (
     )
 )
 
+# dataSel=sv_sel.resample(ping_time="10min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+# sv_sel = dataSel
+
 Delta_R = float(sv_sel['range'].diff('range').isel(range=0))
 print('DeltaR = ', Delta_R)
 
@@ -125,6 +128,8 @@ Mask = sv_sel_db > Threshold
 sv_sel_db = sv_sel_db.where(Mask, -300)
 sv_sel = sv_sel.where(Mask, 1E-30)
 
+
+
 # Optional: sort coordinates just in case
 sv_sel_db = sv_sel_db.sortby('ping_time').sortby('range')
 
@@ -133,7 +138,7 @@ sv_sel_db = sv_sel_db.sortby('ping_time').sortby('range')
 # print('type(sv_sel),  type(sv_sel_threhholds)', type(sv_sel), type(sv_sel_threhholds))
 # print(sv_sel)
 
-# dataSel=sv_sel.resample(ping_time="1min").mean(dim=["ping_time"]).coarsen(range=10, boundary="trim").mean()
+
 
 
 # Set min/max for visualization
