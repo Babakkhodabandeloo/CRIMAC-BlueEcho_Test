@@ -1,0 +1,9 @@
+The rawdata from the echsounder are from 2 different surveys, and are found in the cruise_data folder under 2024 for the following surveys:
+
+S2024005027_PPRINSESSEINGRIDALEXANDRA_9756
+
+S2024005028_PPRINSESSEINGRIDALEXANDRA_9756
+
+ 
+
+I added you as user to the project folder, Ces-Prosjekt\16034-AquaPlan. Under EXPERIMENTS\ Herring_Experiments you find the specific times in the excel sheet Treatements_herring. In the PP in the same folder are some echograms screendumps from LSSS for the various blocks, just to get an impression of what is going on.
